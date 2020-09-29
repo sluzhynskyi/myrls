@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(adder CXX)
+project(myrls CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -12,15 +12,12 @@ option(ENABLE_CONAN         "Use Conan as a package manager."       OFF)
 include(cmake/config.cmake)
 
 # Project source compilation
-include_directories(inc)
-add_library(operations SHARED src/operations.cpp inc/operations/operations.hpp)
-add_executable(add src/main.cpp)
-target_link_libraries(add operations)
+add_executable(myrls src/main.cpp)
 
 # Add external packages
 find_package(Boost 1.71.0 COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
-target_link_libraries(add Boost::program_options)
+target_link_libraries(myrls Boost::program_options)
 
 # Sanitizers configuration
 if (ENABLE_SANITIZERS)
@@ -32,5 +29,4 @@ if (ENABLE_SANITIZERS)
     find_package(Sanitizers)
 
     # CMake targets to which apply sanitizers
-    add_sanitizers(operations add)
 endif ()

@@ -1,9 +1,10 @@
-# Lab 2 Option 3: Adder
+# Lab 3 myrls
 
 ## Team
 
- - [Volodymyr Chernetskyi](https://github.com/chernetskyi)
-
+ - [Danylo Sluzhynskyi](https://github.com/sluzhynskyi)
+ - [Marian Dubei](https://github.com/MarianDubei)
+ - [Taras Rumezhak](https://github.com/tarasrumezhak)
 ## Prerequisites
 
  - **C++ compiler** - needs to support **C++17** standard
@@ -15,7 +16,7 @@ The rest prerequisites (such as development libraries) can be found in the [pack
 
 1. Clone the project.
     ```bash
-    git clone git@github.com:chernetskyi/cpp-template.git
+    git clone https://github.com/sluzhynskyi/myshell.git
     ```
 2. Install required libraries. On Ubuntu:
    ```bash
@@ -27,12 +28,3 @@ The rest prerequisites (such as development libraries) can be found in the [pack
     cmake --build build
     ```
 
-## Usage
-
-```bash
-add [a] [b]
-```
-
-If less than two numbers provided, zeroes are used instead. If more - an error occurs.
-
-Help flags `-h`/`--help` support is available.
