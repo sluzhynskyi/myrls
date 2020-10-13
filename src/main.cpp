@@ -5,15 +5,26 @@
 #include <stdint.h>
 #include <iostream>
 #include "bitset"
+#include <unistd.h>
 
 static char *print_permissions(const struct stat *sb);
 
 static int
 display_info(const char *fpath, const struct stat *sb,
              int tflag, struct FTW *ftwbuf) {
-    printf("%s %2d %7jd   %-40s %d %s\n", print_permissions(sb),
-           ftwbuf->level, (intmax_t) sb->st_size,
-           fpath, ftwbuf->base, fpath + ftwbuf->base);
+    if (strcmp(fpath, ".") == 0 || strcmp(fpath, "..") == 0) {
+        return 0; // Skip . and ..
+    }
+    char timestr[30];
+    strftime(timestr, sizeof(timestr), " %Y-%m-%d %H:%M:%S ", localtime(&sb->st_mtim.tv_sec));
+    printf(//"%s %2d %7jd   %-40s %d %s\n",
+           "%s %s %9ld %s %s\n",
+           print_permissions(sb),
+           getlogin(),
+           (intmax_t) sb->st_size,
+           timestr,
+           // fpath, ftwbuf->base, fpath + ftwbuf->base);
+           fpath + ftwbuf->base);
     return 0;           /* To tell nftw() to continue */
 }
 
@@ -29,7 +40,6 @@ char *print_permissions(const struct stat *sb) {
     str[7] = (sb->st_mode & S_IWOTH) ? 'w' : '-';
     str[8] = (sb->st_mode & S_IXOTH) ? 'x' : '-';
     str[9] = '\0';
-    std::cout << str << std::endl;
     return str;
 }
 
@@ -37,10 +47,10 @@ int
 main(int argc, char *argv[]) {
     int flags = 0;
 
-    if (argc > 2 && strchr(argv[2], 'd') != NULL)
-        flags |= FTW_DEPTH;
-    if (argc > 2 && strchr(argv[2], 'p') != NULL)
-        flags |= FTW_PHYS;
+    if (argc > 2) {
+        std::cerr << "Error: Received more than one argument" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     if (nftw((argc < 2) ? "." : argv[1], display_info, 20, flags) == -1) {
         perror("nftw");
