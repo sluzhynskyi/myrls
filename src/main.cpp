@@ -12,18 +12,38 @@ static char *print_permissions(const struct stat *sb);
 static int
 display_info(const char *fpath, const struct stat *sb,
              int tflag, struct FTW *ftwbuf) {
+
     if (strcmp(fpath, ".") == 0 || strcmp(fpath, "..") == 0) {
         return 0; // Skip . and ..
     }
+    if (access(fpath, R_OK) ) {
+        std::cerr << "Error: file or directory is not readable " << std::endl;
+        return 0;
+    }
+
     char timestr[30];
     strftime(timestr, sizeof(timestr), " %Y-%m-%d %H:%M:%S ", localtime(&sb->st_mtim.tv_sec));
-    printf(//"%s %2d %7jd   %-40s %d %s\n",
-           "%s %s %9ld %s %s\n",
+
+    char special_file_type = '\0';
+    if (S_ISDIR(sb->st_mode))
+        special_file_type = '/';
+    else if (sb->st_mode & S_IXUSR)
+        special_file_type = '*';
+    else if (S_ISLNK(sb->st_mode))
+        special_file_type = '@';
+    else if (S_ISFIFO(sb->st_mode))
+        special_file_type = '|';
+    else if (S_ISSOCK(sb->st_mode))
+        special_file_type = '=';
+    else if (S_ISREG(sb->st_mode) == 0)
+        special_file_type = '?';
+
+    printf("%s %s %9ld %s %c%s\n",
            print_permissions(sb),
            getlogin(),
            (intmax_t) sb->st_size,
            timestr,
-           // fpath, ftwbuf->base, fpath + ftwbuf->base);
+           special_file_type,
            fpath + ftwbuf->base);
     return 0;           /* To tell nftw() to continue */
 }
