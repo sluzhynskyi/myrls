@@ -4,18 +4,11 @@
 #include <cstring>
 #include <cstdint>
 #include <iostream>
-#include "bitset"
 #include <unistd.h>
 #include <vector>
 #include <string>
 #include "algorithm"
 
-#ifdef WINDOWS
-#include <direct.h>
-#define GetCurrentDir _getcwd
-#else
-#define GetCurrentDir getcwd
-#endif
 using std::vector;
 using std::string;
 using std::cout;
@@ -42,7 +35,12 @@ static char *print_permissions(const struct stat *sb);
 
 void display_info(vector<File> &v) {
     std::sort(v.begin(), v.end());
-    for (size_t i = 1; i < v.size(); ++i) {
+    size_t st = 1;
+    if (v[0].ftwbuf.level != 0) {
+        printf("%s:\n", v[0].fpath.substr(0, v[0].ftwbuf.base).c_str());
+        st = 0;
+    }
+    for (size_t i = st; i < v.size(); ++i) {
         auto f = v[i];
         if (v[i - 1] < v[i]) {
             printf("%s:\n", v[i].fpath.substr(0, v[i].ftwbuf.base).c_str());
@@ -87,13 +85,6 @@ static int save_to_vector(const char *fpath, const struct stat *sb, int tflag, s
     return 0;           /* To tell nftw() to continue */
 }
 
-std::string get_current_dir() {
-    char buff[FILENAME_MAX]; //create string buffer to hold path
-    GetCurrentDir(buff, FILENAME_MAX);
-    string current_working_dir(buff);
-    return current_working_dir;
-}
-
 char *print_permissions(const struct stat *sb) {
     char *str = static_cast<char *>(malloc(10));
     str[0] = (sb->st_mode & S_IRUSR) ? 'r' : '-';
@@ -116,7 +107,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (nftw((argc < 2) ? get_current_dir().c_str() : argv[1], save_to_vector, 20, flags) == -1) {
+    if (nftw((argc < 2) ? "." : argv[1], save_to_vector, 20, flags) == -1) {
         perror("nftw");
         exit(EXIT_FAILURE);
     }
