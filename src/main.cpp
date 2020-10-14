@@ -1,50 +1,83 @@
 #include <ftw.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cstdint>
 #include <iostream>
 #include "bitset"
 #include <unistd.h>
+#include <vector>
+#include <string>
+#include "algorithm"
+
+using std::vector;
+using std::string;
+using std::cout;
+using std::endl;
+
+struct File {
+    string fpath;
+    struct stat sb;
+    int tflag;
+    struct FTW ftwbuf;
+
+    bool operator<(const File &other) const {
+        if (ftwbuf.level == other.ftwbuf.level) {
+            return fpath.substr(0, ftwbuf.base) < other.fpath.substr(0, other.ftwbuf.base);
+        } else {
+            return ftwbuf.level < other.ftwbuf.level;
+        }
+    }
+};
+
+vector<File> files;
 
 static char *print_permissions(const struct stat *sb);
 
-static int
-display_info(const char *fpath, const struct stat *sb,
-             int tflag, struct FTW *ftwbuf) {
+void display_info(vector<File> &v) {
+    std::sort(v.begin(), v.end());
+    for (size_t i = 1; i < v.size(); ++i) {
+        auto f = v[i];
+        if (v[i - 1] < v[i]) {
+            printf("%s:\n", v[i].fpath.substr(0, v[i].ftwbuf.base).c_str());
+        }
+        char timestr[30];
+        strftime(timestr, sizeof(timestr), " %Y-%m-%d %H:%M:%S ", localtime(&f.sb.st_mtim.tv_sec));
+
+        char special_file_type = '\0';
+        if (S_ISDIR(f.sb.st_mode))
+            special_file_type = '/';
+        else if (f.sb.st_mode & S_IXUSR)
+            special_file_type = '*';
+        else if (S_ISLNK(f.sb.st_mode))
+            special_file_type = '@';
+        else if (S_ISFIFO(f.sb.st_mode))
+            special_file_type = '|';
+        else if (S_ISSOCK(f.sb.st_mode))
+            special_file_type = '=';
+        else if (S_ISREG(f.sb.st_mode) == 0)
+            special_file_type = '?';
+        printf("%s %s %9ld %s %c%s\n",
+               print_permissions(&f.sb),
+               getlogin(),
+               (intmax_t) f.sb.st_size,
+               timestr,
+               special_file_type,
+               f.fpath.substr(f.ftwbuf.base).c_str());
+    }
+}
+
+static int save_to_vector(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf) {
 
     if (strcmp(fpath, ".") == 0 || strcmp(fpath, "..") == 0) {
         return 0; // Skip . and ..
     }
-    if (access(fpath, R_OK) ) {
+    if (access(fpath, R_OK)) {
         std::cerr << "Error: file or directory is not readable " << std::endl;
         return 0;
     }
-
-    char timestr[30];
-    strftime(timestr, sizeof(timestr), " %Y-%m-%d %H:%M:%S ", localtime(&sb->st_mtim.tv_sec));
-
-    char special_file_type = '\0';
-    if (S_ISDIR(sb->st_mode))
-        special_file_type = '/';
-    else if (sb->st_mode & S_IXUSR)
-        special_file_type = '*';
-    else if (S_ISLNK(sb->st_mode))
-        special_file_type = '@';
-    else if (S_ISFIFO(sb->st_mode))
-        special_file_type = '|';
-    else if (S_ISSOCK(sb->st_mode))
-        special_file_type = '=';
-    else if (S_ISREG(sb->st_mode) == 0)
-        special_file_type = '?';
-
-    printf("%s %s %9ld %s %c%s\n",
-           print_permissions(sb),
-           getlogin(),
-           (intmax_t) sb->st_size,
-           timestr,
-           special_file_type,
-           fpath + ftwbuf->base);
+    File f = {fpath, *sb, tflag, *ftwbuf};
+    files.push_back(f);
     return 0;           /* To tell nftw() to continue */
 }
 
@@ -63,19 +96,18 @@ char *print_permissions(const struct stat *sb) {
     return str;
 }
 
-int
-main(int argc, char *argv[]) {
-    int flags = 0;
-
+int main(int argc, char *argv[]) {
+    int flags = FTW_PHYS;
     if (argc > 2) {
         std::cerr << "Error: Received more than one argument" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    if (nftw((argc < 2) ? "." : argv[1], display_info, 20, flags) == -1) {
+    if (nftw((argc < 2) ? "." : argv[1], save_to_vector, 20, flags) == -1) {
         perror("nftw");
         exit(EXIT_FAILURE);
     }
+    display_info(files);
 
     exit(EXIT_SUCCESS);
 }
