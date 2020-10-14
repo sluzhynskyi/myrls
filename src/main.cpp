@@ -10,6 +10,12 @@
 #include <string>
 #include "algorithm"
 
+#ifdef WINDOWS
+#include <direct.h>
+#define GetCurrentDir _getcwd
+#else
+#define GetCurrentDir getcwd
+#endif
 using std::vector;
 using std::string;
 using std::cout;
@@ -81,6 +87,13 @@ static int save_to_vector(const char *fpath, const struct stat *sb, int tflag, s
     return 0;           /* To tell nftw() to continue */
 }
 
+std::string get_current_dir() {
+    char buff[FILENAME_MAX]; //create string buffer to hold path
+    GetCurrentDir(buff, FILENAME_MAX);
+    string current_working_dir(buff);
+    return current_working_dir;
+}
+
 char *print_permissions(const struct stat *sb) {
     char *str = static_cast<char *>(malloc(10));
     str[0] = (sb->st_mode & S_IRUSR) ? 'r' : '-';
@@ -103,7 +116,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (nftw((argc < 2) ? "." : argv[1], save_to_vector, 20, flags) == -1) {
+    if (nftw((argc < 2) ? get_current_dir().c_str() : argv[1], save_to_vector, 20, flags) == -1) {
         perror("nftw");
         exit(EXIT_FAILURE);
     }
@@ -111,3 +124,4 @@ int main(int argc, char *argv[]) {
 
     exit(EXIT_SUCCESS);
 }
+
